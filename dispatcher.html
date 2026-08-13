@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gotham Dispatch Console</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;max-width:800px;margin:30px auto;padding:0 16px}
+  h1{color:#f5c518}
+  table{width:100%;border-collapse:collapse;margin-top:16px}
+  th,td{padding:10px;text-align:left;border-bottom:1px solid #30363d;font-size:14px}
+  th{color:#9da7b3;text-transform:uppercase;font-size:12px}
+  .tag{padding:3px 8px;border-radius:4px;font-weight:700;font-size:12px}
+  .Fire{background:#7f1d1d}
+  .Police{background:#1e3a8a}
+  .Medical{background:#166534}
+  .UNASSIGNED{color:#f87171}
+  .ASSIGNED{color:#4ade80}
+  select{background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:4px;padding:4px}
+  #empty{color:#9da7b3;margin-top:20px}
+</style>
+</head>
+<body>
+<h1>🚨 Dispatcher Console</h1>
+<p id="empty">Waiting for incoming reports...</p>
+<table id="reportsTable" style="display:none">
+  <thead>
+    <tr><th>Time</th><th>Type</th><th>Location</th><th>Description</th><th>Status</th><th>Assign Unit</th></tr>
+  </thead>
+  <tbody id="reportsBody"></tbody>
+</table>
+
+<script>
+const unitCache = {};
+
+async function getUnits(type) {
+  if (unitCache[type]) return unitCache[type];
+  const res = await fetch(`/api/units/${type}`);
+  const units = await res.json();
+  unitCache[type] = units;
+  return units;
+}
+
+async function assignUnit(id, unit) {
+  await fetch(`/api/reports/${id}/assign`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({unit})
+  });
+  loadReports();
+}
+
+async function loadReports() {
+  const res = await fetch('/api/reports');
+  const reports = await res.json();
+  const body = document.getElementById('reportsBody');
+  const table = document.getElementById('reportsTable');
+  const empty = document.getElementById('empty');
+
+  if (reports.length === 0) {
+    empty.style.display = 'block';
+    table.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  table.style.display = 'table';
+
+  body.innerHTML = '';
+  for (const r of reports) {
+    const units = await getUnits(r.type);
+    const options = units.map(u =>
+      `<option value="${u}" ${r.assigned_unit === u ? 'selected' : ''}>${u}</option>`
+    ).join('');
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${r.timestamp}</td>
+      <td><span class="tag ${r.type}">${r.type}</span></td>
+      <td>${r.location}</td>
+      <td>${r.description || '—'}</td>
+      <td class="${r.status}">${r.status}</td>
+      <td>
+        <select onchange="assignUnit('${r.id}', this.value)">
+          <option value="">-- select --</option>
+          ${options}
+        </select>
+      </td>
+    `;
+    body.appendChild(row);
+  }
+}
+
+loadReports();
+setInterval(loadReports, 3000); // poll every 3s = "real-time" for Sprint 1
+</script>
+</body>
+</html>

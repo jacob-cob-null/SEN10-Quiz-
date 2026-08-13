@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gotham Emergency Report</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0d1117;color:#e6edf3;max-width:480px;margin:40px auto;padding:0 16px}
+  h1{color:#f5c518}
+  label{display:block;margin-top:14px;font-size:14px;color:#9da7b3}
+  select,input,textarea{width:100%;padding:10px;margin-top:4px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3;box-sizing:border-box}
+  button{margin-top:20px;width:100%;padding:12px;background:#f5c518;color:#0d1117;font-weight:700;border:none;border-radius:6px;cursor:pointer}
+  #status{margin-top:16px;padding:10px;border-radius:6px;display:none}
+  .ok{background:#1f6f3d;display:block!important}
+  .err{background:#7f1d1d;display:block!important}
+</style>
+</head>
+<body>
+<h1>🦇 Gotham Emergency Report</h1>
+<form id="reportForm">
+  <label>Emergency Type</label>
+  <select id="type" required>
+    <option value="Fire">Fire</option>
+    <option value="Police">Police</option>
+    <option value="Medical">Medical</option>
+  </select>
+
+  <label>Location</label>
+  <input id="location" placeholder="e.g. 5th & Grant Ave, Gotham" required>
+
+  <label>Description (optional)</label>
+  <textarea id="description" rows="3" placeholder="Details..."></textarea>
+
+  <button type="submit">Submit Report</button>
+</form>
+<div id="status"></div>
+
+<script>
+document.getElementById('reportForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    type: document.getElementById('type').value,
+    location: document.getElementById('location').value,
+    description: document.getElementById('description').value,
+  };
+  const statusEl = document.getElementById('status');
+  try {
+    const res = await fetch('/api/reports', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Submit failed');
+    const data = await res.json();
+    statusEl.className = 'ok';
+    statusEl.textContent = `Report ${data.id} submitted. Units notified.`;
+    document.getElementById('reportForm').reset();
+  } catch (err) {
+    statusEl.className = 'err';
+    statusEl.textContent = 'Error: ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
